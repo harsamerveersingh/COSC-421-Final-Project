@@ -1,2 +1,3 @@
 # COSC-421-Final-Project
-COSC-421-Final-Project 
+
+Project repo for COSC-421-Final-Project 
