@@ -47,7 +47,6 @@ str(data, max.level = 1)
 
 # === EXTRACT STATIONS ===
 stations <- data$fuel_stations
-cat("Number of stations extracted:", length(stations), "\n")
 
 if (length(stations) == 0) {
   cat("No stations returned. Check API key, parameters, or internet.\n")

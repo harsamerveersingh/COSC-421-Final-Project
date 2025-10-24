@@ -20,12 +20,10 @@ cat("\n=== VALIDATION ===\n")
 # Missing critical fields
 missing_geo <- sum(is.na(bc_stations$latitude) | is.na(bc_stations$longitude))
 missing_name <- sum(is.na(bc_stations$station_name))
-cat("Missing latitude/longitude:", missing_geo, "\n")
-cat("Missing station name:", missing_name, "\n")
+
 
 # Duplicates
 dup_ids <- bc_stations %>% filter(duplicated(id)) %>% nrow()
-cat("Duplicate IDs:", dup_ids, "\n")
 
 # Out of BC bounds
 out_of_bounds <- bc_stations %>%
