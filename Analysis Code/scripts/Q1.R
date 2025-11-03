@@ -51,6 +51,7 @@ print("BC Cities Underserved Score Analysis (Higher Score = Higher Priority):")
 top_results <- results_df[order(results_df$UnderservedScore, decreasing = TRUE), ]
 print(top_results)
 
+write.csv(top_results, "BC_Cities_Underserved_Score.csv", row.names = FALSE)
 
 plot(network_graph,
      vertex.label = V(network_graph)$name,
