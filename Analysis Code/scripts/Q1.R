@@ -53,8 +53,7 @@ print(top_results)
 
 
 plot(network_graph,
-     layout = layout_nicely(network_graph),
      vertex.label = V(network_graph)$name,
      vertex.label.cex = 0.8,
-     main = "BC Cities: Underserved Priority Analysis ",
+     main = "BC Cities: Underserved Priority Analysis "
 )
