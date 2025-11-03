@@ -3,3 +3,65 @@
 # Metrics: Population of each area, closeness centrality of each area in the network, find underserved score = population/closeness centrality, highlighting areas with high population but low accessibility.
 
 # Analysis: Identify areas with high underserved scores as priority zones. These are the areas where adding backup stations would likely have the most impact. Plot a graph to visualize results.
+
+
+
+install.packages("igraph")
+library(igraph)
+getwd()
+setwd("C:/Users/hsingh77.stu/Downloads/COSC-421-Final-Project/Dataset/EV_stations/learning_purpose/learning_purpose")
+list.files()
+
+area_df <- read.csv("bc_area_population.csv", 
+                    header = TRUE,stringsAsFactors = FALSE)
+
+area_df$Population <- as.numeric(area_df$Population)
+
+rownames(area_df) <- area_df$AreaID
+
+network_edges_data <- read.csv("C:/Users/hsingh77.stu/Downloads/COSC-421-Final-Project/Dataset/EV_stations/learning_purpose/learning_purpose/bc_network_edges.csv", 
+                               header = TRUE, 
+                               stringsAsFactors = FALSE)
+
+network_graph <- graph_from_data_frame(d = network_edges_data,
+                                       vertices = area_df$AreaID,
+                                       directed = FALSE)
+print(area_df)
+print(network_edges_data)
+
+V(network_graph)$Population <- area_df[V(network_graph)$name, "Population"]
+
+closeness_scores <- closeness(network_graph, normalized = TRUE)
+
+results_df <- data.frame(
+  AreaID = V(network_graph)$name,
+  Population = V(network_graph)$Population,
+  ClosenessCentrality = closeness_scores
+)
+print(results_df)
+
+min_non_zero_closeness <- min(results_df$ClosenessCentrality[results_df$ClosenessCentrality > 0])
+results_df$ClosenessCentrality[results_df$ClosenessCentrality == 0] <- min_non_zero_closeness / 10
+results_df$UnderservedScore <- results_df$Population / results_df$ClosenessCentrality
+
+results_df$PriorityRank <- rank(-results_df$UnderservedScore)
+
+
+print("BC Cities Underserved Score Analysis (Higher Score = Higher Priority):")
+top_results <- results_df[order(results_df$UnderservedScore, decreasing = TRUE), ]
+print(top_results)
+
+
+score_range <- range(results_df$UnderservedScore)
+color_palette <- colorRampPalette(c("lightblue", "orange", "red"))(100)
+color_index <- round(((results_df$UnderservedScore - score_range[1]) / (score_range[2] - score_range[1])) * 99) + 1
+V(network_graph)$color <- color_palette[color_index[match(V(network_graph)$name, results_df$AreaID)]]
+
+V(network_graph)$size <- V(network_graph)$Population / max(V(network_graph)$Population) * 30 + 10
+
+plot(network_graph,
+     layout = layout_nicely(network_graph),
+     vertex.label = V(network_graph)$name,
+     vertex.label.cex = 0.8,
+     main = "BC Cities: Underserved Priority Analysis (Hypothetical Connectivity)",
+)
