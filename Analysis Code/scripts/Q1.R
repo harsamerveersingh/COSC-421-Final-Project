@@ -52,13 +52,6 @@ top_results <- results_df[order(results_df$UnderservedScore, decreasing = TRUE),
 print(top_results)
 
 
-score_range <- range(results_df$UnderservedScore)
-color_palette <- colorRampPalette(c("lightblue", "orange", "red"))(100)
-color_index <- round(((results_df$UnderservedScore - score_range[1]) / (score_range[2] - score_range[1])) * 99) + 1
-V(network_graph)$color <- color_palette[color_index[match(V(network_graph)$name, results_df$AreaID)]]
-
-V(network_graph)$size <- V(network_graph)$Population / max(V(network_graph)$Population) * 30 + 10
-
 plot(network_graph,
      layout = layout_nicely(network_graph),
      vertex.label = V(network_graph)$name,
