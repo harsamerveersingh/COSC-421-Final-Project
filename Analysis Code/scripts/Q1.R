@@ -9,8 +9,8 @@
 install.packages("igraph")
 library(igraph)
 getwd()
-setwd("C:/Users/hsingh77.stu/Downloads/COSC-421-Final-Project/Dataset/EV_stations/learning_purpose/learning_purpose")
-list.files()
+#setwd("")
+#list.files()
 
 area_df <- read.csv("bc_area_population.csv", 
                     header = TRUE,stringsAsFactors = FALSE)
@@ -19,7 +19,7 @@ area_df$Population <- as.numeric(area_df$Population)
 
 rownames(area_df) <- area_df$AreaID
 
-network_edges_data <- read.csv("C:/Users/hsingh77.stu/Downloads/COSC-421-Final-Project/Dataset/EV_stations/learning_purpose/learning_purpose/bc_network_edges.csv", 
+network_edges_data <- read.csv("bc_network_edges.csv", 
                                header = TRUE, 
                                stringsAsFactors = FALSE)
 
