@@ -42,4 +42,38 @@ top_betweenness_df <- data.frame(
 )
 print(top_betweenness_df)
 
-# TODO: Create a simulation to see how much the network can take before failure
+# ranked list of highest betweenness nodes
+removal_order <- names(sort(betweenness_vals, decreasing = TRUE))
+
+# Storage for proportion of nodes in largest component
+largest_component_sizes <- numeric(length(removal_order))
+
+# Storage for dropoff magnitudes
+dropoffs <- numeric(length(removal_order))
+
+# Clone of g to test for failure
+g_fail <- g 
+
+for (i in seq_along(removal_order)) {
+  
+  # Remove the station
+  g_fail <- delete_vertices(g_fail, removal_order[i])
+  
+  # Measure connectedness
+  comp <- components(g_fail)
+  
+  # Track largest component proportion
+  current <- max(comp$csize) / gorder(g_fail)
+  largest_component_sizes[i] <- current
+  
+  # Compute dropoff from previous step (i > 1)
+  if (i > 1) {
+    dropoffs[i] <- largest_component_sizes[i-1] - current
+  }
+}
+
+# Identify indices where the drop exceeds a chosen threshold
+threshold <- 0.01   # 5% sudden drop
+significant_drop_indices <- which(dropoffs > threshold)
+
+significant_drop_indices
