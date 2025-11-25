@@ -1,6 +1,6 @@
 # Title: EV Underserved Priority Analysis
 # Author: Harsamerveer Singh
-# Date: 11/22/2025
+# Date: 11/25/2025
 # Goal: Identify areas for prioritizing backup EV station placement based on 
 #       Population, Network Accessibility, and Existing EV Stations.
 
@@ -9,7 +9,7 @@ install.packages("dplyr")
 library(igraph)
 library(dplyr)
 
-# setwd("H:/COSC-421-Final-Project/Dataset/EV_stations/learning_purpose/learning_purpose")
+# setwd("")
 print(paste("Current Working Directory:", getwd()))
 
 # 1. Load Area Population Data
@@ -18,7 +18,7 @@ area_df <- read.csv("bc_area_population.csv",
 area_df$Population <- as.numeric(area_df$Population)
 
 valid_area_ids <- area_df$AreaID
-rownames(area_df) <- area_df$AreaID # Set rownames for robust graph attribute lookup
+rownames(area_df) <- area_df$AreaID
 
 # 2. Load and Aggregate EV Station Data
 ev_stations_df <- read.csv("bc_electric_charging_stations_CLEAN.csv", 
@@ -27,9 +27,9 @@ ev_stations_df <- read.csv("bc_electric_charging_stations_CLEAN.csv",
 filtered_stations_df <- ev_stations_df %>% 
   filter(city %in% valid_area_ids)
 
-# 3. Aggregate: Calculate the total number of stations per AreaID (City)
+# 3. Calculate the total number of stations per AreaID (City)
 ev_station_counts <- filtered_stations_df %>% 
-  group_by(AreaID = city) %>% # Group by 'city', rename column to 'AreaID' for join
+  group_by(AreaID = city) %>% 
   summarise(EV_Stations = n())
 
 
@@ -61,7 +61,7 @@ network_graph <- graph_from_data_frame(d = network_edges_data,
                                        vertices = area_df$AreaID,
                                        directed = FALSE)
 
-# 6. Assign Attributes to Graph Vertices (Using rownames for robust indexing)
+# 6. Assign Attributes to Graph Vertices
 V(network_graph)$Population <- area_df[V(network_graph)$name, "Population"]
 V(network_graph)$EV_Stations <- area_df[V(network_graph)$name, "EV_Stations"] 
 
@@ -79,7 +79,7 @@ results_df <- data.frame(
   ClosenessCentrality = closeness_scores
 )
 print(results_df)
-# Handle zero closeness centrality: replace 0 with a small fraction of the minimum non-zero value
+# Handle zero closeness centrality replace 0 with a small fraction of the minimum non-zero value
 min_non_zero_closeness <- min(results_df$ClosenessCentrality[results_df$ClosenessCentrality > 0])
 results_df$ClosenessCentrality[results_df$ClosenessCentrality == 0] <- min_non_zero_closeness / 10
 
@@ -90,14 +90,7 @@ print(mean_stations)
 results_df$EV_UnderservedScore <- (results_df$Population * (1 + mean_stations)) / 
   (results_df$ClosenessCentrality * (results_df$EV_Stations + 1))
 results_df$PriorityRank <- rank(-results_df$EV_UnderservedScore)
-
-print(results_df$EV_UnderservedScore)
-print(results_df$ClosenessCentrality)
-
-
 top_results <- results_df[order(results_df$EV_UnderservedScore, decreasing = TRUE), ]
-print(head(top_results, 15)) # Print top 15 results
-
 write.csv(top_results, "BC_Cities_EV_Underserved_Score.csv", row.names = FALSE)
 
 # Use the 'match' function for reliable indexing of the score, preventing 'invalid indexing' error
