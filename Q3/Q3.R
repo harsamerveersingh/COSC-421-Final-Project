@@ -45,6 +45,15 @@ stations_df <- data.frame(
   pagerank_centrality = V(graph)$pagerank_centrality
 )
 
+# Function to normalize the degree and pagerank centralities
+normalize_centralities <- function(x) {
+  value_range <- range(x, na.rm = TRUE)
+  if (diff(value_range) == 0) {
+    return(rep(0, length(x)))
+  }
+  (x - value_range[1]) / diff(value_range)
+}
+
 # Normalize and combine degree & pagerank into a hub score in [0, 1] with
 # degree centrality weighing 20% and pagerank centrality weighing 80%
 degree_centrality_normalized <- normalize_centralities(stations_df$degree_centrality)
@@ -55,15 +64,6 @@ stations_df$pagerank_centrality_normalized <- pagerank_centrality_normalized
 
 stations_df$hub_score <- 0.05 * degree_centrality_normalized +
   0.95 * pagerank_centrality_normalized
-
-# Function to normalize the degree and pagerank centralities
-normalize_centralities <- function(x) {
-  value_range <- range(x, na.rm = TRUE)
-  if (diff(value_range) == 0) {
-    return(rep(0, length(x)))
-  }
-  (x - value_range[1]) / diff(value_range)
-}
 
 # Sort stations by degree centrality in decreasing order & define how many critical hubs we want
 number_of_stations <- 50
@@ -119,22 +119,23 @@ hubs_by_access <- table(top_stations_by_hub_score$access, dnn = c("Access"))
 cat("\nHubs By Access:\n")
 hubs_by_access
 
-# Create a visual of a scatter plot to show the degree centrality vs pagerank centrality
+# Create a visual of a scatter plot to show the degree centrality vs pagerank centrality and save it as a .pdf
+pdf("./Q3/output/degree_vs_pagerank_scatter.pdf", width = 8, height = 7)
 plot(stations_df$degree_centrality_normalized, stations_df$pagerank_centrality_normalized,
   xlab = "Normalized Degree Centrality", ylab = "Normalized PageRank Centrality",
   main = "Degree vs PageRank Centrality", col = "grey"
 )
-
 points(
-  stations_df$degree_centrality_normalized[stations_df$id %in% top_stations_by_hub_score$id], 
+  stations_df$degree_centrality_normalized[stations_df$id %in% top_stations_by_hub_score$id],
   stations_df$pagerank_centrality_normalized[stations_df$id %in% top_stations_by_hub_score$id],
   col = "red"
 )
-
 legend(
-  "bottomright", legend = c("Not Critical Hubs", "Critical Hubs"),
-  col = c("grey", "red")
+  "bottomright",
+  legend = c("Not Critical Hubs", "Critical Hubs"),
+  col = c("grey", "red"), pch = 1
 )
+dev.off()
 
-# Print out critical hubs into a csv with their information
+# Print out critical hubs into a .csv with their information
 write.csv(top_stations_by_hub_score, "./Q3/output/critical_hubs_bc.csv")
