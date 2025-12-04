@@ -1,8 +1,8 @@
 library(igraph)
 library(geosphere)
-
+library(readr)
 # Load the data
-stations <- read.csv("C:/Users/nicho/Cosc421_Final/COSC-421-Final-Project/Dataset/EV_stations/bc_electric_charging_stations_CLEAN.csv")
+stations <- read_csv("Dataset/EV_stations/bc_electric_charging_stations_CLEAN.csv")
 
 # Clean stations
 stations_clean <- stations[!is.na(stations$latitude) & !is.na(stations$longitude), ]
@@ -10,73 +10,88 @@ stations_clean <- stations_clean[, c("id", "station_name", "city", "latitude", "
 
 # Distance matrix in meters
 coords <- stations_clean[, c("longitude", "latitude")]
+
 dist_matrix <- distm(coords, fun = distHaversine)
-
-# Adjacency for edges within 10 km
 threshold <- 10000
-adj_matrix <- dist_matrix <= threshold
-diag(adj_matrix) <- 0
 
-weight_matrix <- dist_matrix
-weight_matrix[!adj_matrix] <- 0
-diag(weight_matrix) <- 0
+# All i,j where distance <= 10 km
+idx <- which(dist_matrix <= threshold & dist_matrix > 0, arr.ind = TRUE)
 
+# Keep only upper triangle to avoid duplicates
+idx <- idx[idx[,1] < idx[,2], ]
 
+# Build edge list
+edge_list <- data.frame(
+  from = stations_clean$id[idx[,1]],
+  to   = stations_clean$id[idx[,2]],
+  weight = dist_matrix[idx]
+)
+
+cat("creating weighted graph)")
 # Create weighted graph
-g <- graph_from_adjacency_matrix(weight_matrix, mode = "undirected", weighted = TRUE)
-V(g)$name <- stations_clean$station_name
-V(g)$city <- stations_clean$city
-
+g <- graph_from_data_frame(
+  edge_list, 
+  directed = FALSE,
+  vertices = stations_clean
+)
 summary(g)
 baseline <- distances(g, weights = E(g)$weight)
 
-# All stations to iterate over
-stations_list <- V(g)$name
-n <- length(stations_list)
+#betweeness to narrow down the search
+betw <- betweenness(g, directed = FALSE, weights = E(g)$weight, normalized=TRUE)
 
-head(data.frame(
-  from = as.character(ends(g, E(g))[ ,1]),
-  to = as.character(ends(g, E(g))[ ,2]),
-  weight = E(g)$weight
-))
+avg_dist <- rowMeans(baseline)
+deg <- degree(g)
 
-# Prepare results
+top_k <- 100  # number of top stations to simulate
+top_ids <- names(sort(betw, decreasing = TRUE))[1:top_k]
+
+top_far <- names(sort(avg_dist, decreasing=TRUE))[1:20] # peripheral nodes
+top_deg <- names(sort(deg, decreasing=TRUE))[1:40] #high degree nodes
+
+#merge the unique outlier nodes
+selected_nodes <- unique(c(top_ids, top_far, top_deg))
+
 results <- data.frame(
-  station_removed = stations_list,
-  avg_extra_distance_km = numeric(n),
-  max_extra_distance_km = numeric(n)
+  station_removed = selected_nodes,
+  avg_extra_distance_km = numeric(length(selected_nodes)),
+  max_extra_distance_km = numeric(length(selected_nodes))
 )
 
-cat("Starting failure scenario analysis for", n, "stations...\n")
-
-for (i in seq_along(stations_list)) {
-  station <- stations_list[i]
-  cat("Processing station", i, "of", n, ":", station, "\n")
+for(i in seq_along(selected_nodes)){
+  station <- selected_nodes[i]
+  cat("Processing", i, "of", length(selected_nodes), "station:", station, "\n")
   
-  # Delete station from graph
+  #remove station
   g_fail <- delete_vertices(g, station)
+  remaining <-setdiff(V(g)$name, station)
   
-  # Remaining station names
-  remaining_names <- setdiff(stations_list, station)
+  dist_after <- distances(g_fail, v = remaining, to = remaining, weights = E(g_fail)$weight)
   
-  # Distances after removal (subset only the remaining stations)
-  dist_after <- distances(g_fail, v = remaining_names, to = remaining_names, weights = E(g_fail)$weight)
+  dist_before <- baseline[remaining, remaining]
   
-  # Distances before removal
-  dist_before <- baseline[remaining_names, remaining_names]
+  extra_dist = dist_after - dist_before
   
-  # Extra distance
-  extra_dist <- dist_after - dist_before
+  #values must be finite and positive
+  idx <- which(is.finite(extra_dist) & extra_dist > 0)
   
-  # Keep only finite positive distances
-  valid_idx <- which(is.finite(extra_dist) & extra_dist > 0)
+  if (length(idx) > 0) {
+    results$avg_extra_distance_km[i] <- mean(extra_dist[idx]) / 1000
+    results$max_extra_distance_km[i] <- max(extra_dist[idx]) / 1000
+  } else {
+    results$avg_extra_distance_km[i] <- 0
+    results$max_extra_distance_km[i] <- 0
+  }
   
-  # Compute summary statistics safely
-  results$avg_extra_distance_km[i] <- if(length(valid_idx) > 0) mean(extra_dist[valid_idx])/1000 else 0
-  results$max_extra_distance_km[i] <- if(length(valid_idx) > 0) max(extra_dist[valid_idx])/1000 else 0
 }
+results_sorted <- results[order(-results$avg_extra_distance_km), ]
+results <- results_sorted
 
-# Save results to CSV
-write.csv(results, "Q2_station_removal_results_full.csv", row.names = FALSE)
+write.csv(results, "Q2/Q2_station_removal_results_by_avg.csv", row.names = FALSE)
 
-head(results)
+results_sorted <- results[order(-results$max_extra_distance_km), ]
+results <- results_sorted
+
+write.csv(results, "Q2/Q2_station_removal_by_max")
+
+cat("Done! Results saved to Q2_station_removal_results.csv\n")
