@@ -92,6 +92,46 @@ write.csv(results, "Q2/Q2_station_removal_results_by_avg.csv", row.names = FALSE
 results_sorted <- results[order(-results$max_extra_distance_km), ]
 results <- results_sorted
 
-write.csv(results, "Q2/Q2_station_removal_by_max")
+write.csv(results, "Q2/Q2_station_removal_by_max.csv")
 
 cat("Done! Results saved to Q2_station_removal_results.csv\n")
+
+
+#special edge case for nodes that have degree 0 under the current thresshold while also being on the outsides of the network
+# Load your results
+results <- read.csv("Q2/Q2_station_removal_by_max.csv")
+# Suppose your CSV of results is loaded as `results`
+isolated_nodes <- results$station_removed[results$max_extra_distance_km < 1e-6]
+
+# Pick the first isolated node
+nearest_info <- data.frame(
+  station_id = isolated_nodes,
+  station_name = NA_character_,
+  nearest_id = NA_character_,
+  nearest_name = NA_character_,
+  nearest_dist_m = numeric(length(isolated_nodes)),
+  stringsAsFactors = FALSE
+)
+
+
+for (i in seq_along(isolated_nodes)) {
+  iso_id <- isolated_nodes[i]
+  iso_index <- match(iso_id, stations_clean$id)
+  
+  # distances to all other stations
+  dists <- dist_matrix[iso_index, ]
+  dists[iso_index] <- Inf  # ignore self
+  
+  nearest_index <- which.min(dists)
+  
+  nearest_info$station_name[i] <- stations_clean$station_name[iso_index]
+  nearest_info$nearest_id[i] <- stations_clean$id[nearest_index]
+  nearest_info$nearest_name[i] <- stations_clean$station_name[nearest_index]
+  nearest_info$nearest_dist_m[i] <- dists[nearest_index]
+}
+nearest_info
+write.csv(nearest_info, "Q2/isolated_nodes_nearest.csv", row.names = FALSE)
+
+
+
+
